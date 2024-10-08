@@ -5,6 +5,15 @@ import random
 
 pygame.init()
 
+# TO DO:
+# Steering behaviours for enemies
+# WANDER
+# HIDE
+# WALL AVOIDING
+# OBSTICLE AVOIDING
+# GROUP -> ATTACK
+
+
 SCREEN_WIDTH = 1200
 SCREEN_HEIGHT = 800
 LIGHT_RADIUS = 200
@@ -28,6 +37,7 @@ class Player:
         self.size = 30
         self.radius = 30
         self.pos = pos
+        self.health = 100
 
     def player_rotate(self):
         mouse_x, mouse_y = pygame.mouse.get_pos()
