@@ -10,9 +10,7 @@ def flee(entity, target_pos):
     desired_velocity = (entity.pos - target_pos).normalize() * entity.speed
     return desired_velocity - entity.velocity
 
-
-
-def wander(agent):
+def wander(agent, screen):
     # First, add a small random vector to the target’s position
     agent.wander_target += pygame.Vector2(random_clamped() * WANDER_JITTER,
                                           random_clamped() * WANDER_JITTER)
@@ -25,6 +23,9 @@ def wander(agent):
 
     # Project the target into world space (this is a simplified version)
     target_world = (target_local.rotate(agent.angle) + agent.pos)
+
+    pygame.draw.circle(screen, "blue", (agent.pos.x, agent.pos.y), WANDER_RADIUS, 1)
+    pygame.draw.circle(screen, "cyan", (agent.wander_target.x, agent.wander_target.y), 3)
 
     # Return the steering vector (the direction to the target)
     return (target_world - agent.pos).normalize()

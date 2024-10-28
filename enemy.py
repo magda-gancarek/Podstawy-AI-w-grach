@@ -1,10 +1,25 @@
 import pygame
 import random
 from entity import MovingEntity
-from settings import RED
+import math
 from settings import *
 from utils import check_collision, distance_between_points
 from steering_behaviors import hide, wander, evade
+
+
+def spawn_enemy(obstacles):
+    enemies = []
+    # Spawn an enemy at a random position, avoiding obstacles
+    for _ in range(ENEMY_COUNT):
+        x = random.randint(ENEMY_RADIUS, SCREEN_WIDTH - ENEMY_RADIUS)
+        y = random.randint(ENEMY_RADIUS, SCREEN_HEIGHT - ENEMY_RADIUS)
+        enemy_pos = pygame.Vector2(x, y)
+        enemy = Enemy(enemy_pos)
+        # Check if this position collides with any obstacle
+        if not check_collision(enemy, obstacles):
+            enemies.append(enemy)
+    return enemies
+
 
 class Enemy(MovingEntity):
     def __init__(self, pos):
@@ -15,15 +30,28 @@ class Enemy(MovingEntity):
         self.direction = pygame.Vector2(1,0) # default direction #TODO: arrive behaviour
         self.wander_target = pygame.Vector2(0, 0)  # Initialize wander target
 
-    def draw_enemy(self, screen):
-        pygame.draw.circle(screen, RED, (self.pos.x, self.pos.y), self.radius)
+    def draw_enemy(self, screen):        
+        front_x = self.pos.x + self.radius * math.cos(math.radians(self.angle))
+        front_y = self.pos.y - self.radius * math.sin(math.radians(self.angle))
 
-    def update(self, player, enemies, obstacles):
+        left_x = self.pos.x + self.radius * math.cos(math.radians(self.angle + 120))
+        left_y = self.pos.y - self.radius * math.sin(math.radians(self.angle + 120))
+
+        right_x = self.pos.x + self.radius * math.cos(math.radians(self.angle + 240))
+        right_y = self.pos.y - self.radius * math.sin(math.radians(self.angle + 240))
+
+        points = [(front_x, front_y), (left_x, left_y), (right_x, right_y)]
+
+        pygame.draw.circle(screen, RED, (self.pos.x, self.pos.y), self.radius)
+        pygame.draw.polygon(screen, GREEN, points)
+        pygame.draw.circle(screen, "white", (front_x, front_y), 3)
+
+    def update(self, player, enemies, obstacles, screen):
         # Decide whether to hide or wander
         if self.should_hide(player):
             self.direction = hide(self, player, obstacles)
         else:
-            self.direction = wander(self)
+            self.direction = wander(self, screen)
 
         # Update the angle based on the direction
         if self.direction.length() > 0:  # If there's a valid direction
@@ -69,17 +97,6 @@ class Enemy(MovingEntity):
     
     def should_hide(self, player):
         return (self.pos - player.pos).length() < 300
-
-def spawn_enemy(enemies, obstacles):
-    # Spawn an enemy at a random position, avoiding obstacles
-    for i in range(ENEMY_COUNT):
-        x = random.randint(ENEMY_RADIUS, SCREEN_WIDTH - ENEMY_RADIUS)
-        y = random.randint(ENEMY_RADIUS, SCREEN_HEIGHT - ENEMY_RADIUS)
-        enemy_pos = pygame.Vector2(x, y)
-        enemy = Enemy(enemy_pos)
-        # Check if this position collides with any obstacle
-        if not check_collision(enemy, obstacles):
-            enemies.append(enemy)
 
 
 
