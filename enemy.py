@@ -4,7 +4,7 @@ from entity import MovingEntity
 import math
 from settings import *
 from utils import check_collision, distance_between_points
-from steering_behaviors import hide, wander, evade
+#from steering_behaviors import hide, wander, evade
 
 
 def spawn_enemy(obstacles):
@@ -26,9 +26,11 @@ class Enemy(MovingEntity):
         self.pos = pos
         self.angle = 0
         self.radius = ENEMY_RADIUS
-        self.speed = ENEMY_SPEED
-        self.direction = pygame.Vector2(1,0) # default direction #TODO: arrive behaviour
+        self.max_speed = ENEMY_SPEED
+        self.velocity = pygame.Vector2(1,0) # default direction #TODO: arrive behaviour
         self.wander_target = pygame.Vector2(0, 0)  # Initialize wander target
+        self.max_force = 0.1
+        self.acceleration = pygame.Vector2(0, 0)
 
     def draw_enemy(self, screen):        
         front_x = self.pos.x + self.radius * math.cos(math.radians(self.angle))
@@ -46,19 +48,111 @@ class Enemy(MovingEntity):
         pygame.draw.polygon(screen, GREEN, points)
         pygame.draw.circle(screen, "white", (front_x, front_y), 3)
 
+        # Draw direction line indicating movement direction
+        line_length = 60
+        line_end_x = front_x + line_length * math.cos(math.radians(self.angle))
+        line_end_y = front_y - line_length * math.sin(math.radians(self.angle))
+        pygame.draw.line(screen, RED, (front_x, front_y), (line_end_x, line_end_y), 2)
+
+        # draw rectangle for obsticles avoidance
+        line_length_rect = 200
+        line_left_end_x = left_x + line_length_rect * math.cos(math.radians(self.angle))
+        line_left_end_y = left_y - line_length_rect * math.sin(math.radians(self.angle))
+        pygame.draw.line(screen, "grey", (left_x, left_y), (line_left_end_x, line_left_end_y), 2)
+
+        line_right_end_x = right_x + line_length_rect * math.cos(math.radians(self.angle))
+        line_right_end_y = right_y - line_length_rect * math.sin(math.radians(self.angle))
+        pygame.draw.line(screen, "grey", (right_x, right_y), (line_right_end_x, line_right_end_y), 2)
+
+
+    def seek(self, target):
+        # Desired velocity is the vector pointing from the agent to the target
+        desired_velocity = (target - self.pos).normalize() * self.max_speed
+        
+        # Steering force is the difference between the desired velocity and current velocity
+        steering_force = desired_velocity - self.velocity
+
+        # Limit the steering force to max_force
+        if steering_force.length() > self.max_force:
+            steering_force = steering_force.normalize() * self.max_force
+
+        # Apply the steering force to the agent's acceleration
+        self.apply_steering(steering_force)
+
+        # Debug visuals: return vectors for drawing
+        return desired_velocity, steering_force
+    
+    def wander(self, screen):
+        # Random jitter for the wander target
+        jitter = pygame.Vector2(
+            random.uniform(-1, 1) * WANDER_JITTER,
+            random.uniform(-1, 1) * WANDER_JITTER
+        )
+        self.wander_target += jitter
+
+        # Limit the wander target to remain on the wander circle
+        self.wander_target = self.wander_target.normalize() * WANDER_RADIUS
+
+        # Calculate the world-space position of the wander target
+        wander_center = self.pos + self.velocity.normalize() * WANDER_DISTANCE
+        wander_point = wander_center + self.wander_target
+
+        # Steering force towards the wander point
+        steering_force = (wander_point - self.pos).normalize() * self.max_force
+        self.apply_steering(steering_force)
+
+        pygame.draw.circle(screen, (100, 100, 100), (int(wander_center.x), int(wander_center.y)), WANDER_RADIUS, 1)
+        pygame.draw.circle(screen, (255, 0, 0), (int(wander_point.x), int(wander_point.y)), 5)
+
+    def apply_steering(self, steering):
+        # Apply the steering to acceleration and limit to max_force
+        self.acceleration += steering
+        if self.acceleration.length() > self.max_force:
+            self.acceleration = self.acceleration.normalize() * self.max_force
+
+
+    def update(self, player, enemies, obstacles, screen):
+        # Update velocity, position, and reset acceleration
+        self.velocity += self.acceleration
+        if self.velocity.length() > self.max_speed:
+            self.velocity = self.velocity.normalize() * self.max_speed
+        
+        # Update the angle based on the direction
+        if self.velocity.length() > 0:  # If there's a valid direction
+            self.angle = self.velocity.angle_to(pygame.Vector2(1, 0))
+        self.acceleration = pygame.Vector2(0, 0)
+
+        # Calculate the potential new position
+        potential_pos = self.pos + (self.velocity * self.max_speed)
+
+        # Check if the potential position is within screen bounds
+        if 0 <= potential_pos.x <= SCREEN_WIDTH and 0 <= potential_pos.y <= SCREEN_HEIGHT:
+            # Create a temporary object to check collisions
+            temp_enemy = MovingEntity(potential_pos, self.radius, self.max_speed)
+
+            # Check collision with other enemies and obstacles
+            if not self.check_enemy_collision(temp_enemy, enemies) and not check_collision(temp_enemy, obstacles):
+                # Move the enemy based on the chosen velocity if no collision
+                self.move(self.velocity)
+            else:
+                # Resolve collision with other enemies
+                self.resolve_enemy_collisions(enemies)
+
+
+    '''
     def update(self, player, enemies, obstacles, screen):
         # Decide whether to hide or wander
         if self.should_hide(player):
-            self.direction = hide(self, player, obstacles)
+            self.velocity = hide(self, player, obstacles)
         else:
-            self.direction = wander(self, screen)
+            self.velocity = wander(self, screen)
 
         # Update the angle based on the direction
-        if self.direction.length() > 0:  # If there's a valid direction
-            self.angle = self.direction.angle_to(pygame.Vector2(1, 0))  # Calculate the angle based on the direction
+        if self.velocity.length() > 0:  # If there's a valid direction
+            self.angle = self.velocity.angle_to(pygame.Vector2(1, 0))  # Calculate the angle based on the direction
 
         # Calculate the potential new position
-        potential_pos = self.pos + (self.direction * self.speed)
+        potential_pos = self.pos + (self.velocity * self.speed)
 
         # Check if the potential position is within screen bounds
         if 0 <= potential_pos.x <= SCREEN_WIDTH and 0 <= potential_pos.y <= SCREEN_HEIGHT:
@@ -67,12 +161,12 @@ class Enemy(MovingEntity):
 
             # Check collision with other enemies and obstacles
             if not self.check_enemy_collision(temp_enemy, enemies) and not check_collision(temp_enemy, obstacles):
-                # Move the enemy based on the chosen direction if no collision
-                self.move(self.direction)
+                # Move the enemy based on the chosen velocity if no collision
+                self.move(self.velocity)
             else:
                 # Resolve collision with other enemies
                 self.resolve_enemy_collisions(enemies)
-
+    '''
     def check_enemy_collision(self, temp_enemy, enemies):
         for enemy in enemies:
             if enemy != self:  # Avoid checking collision with itself
@@ -91,12 +185,14 @@ class Enemy(MovingEntity):
                     overlap = self.radius + enemy.radius - dist
 
                     # Calculate the direction to move away from the other enemy
-                    direction = evade(self, enemy) # Move away from the other enemy
+                    direction = self.evade(self, enemy) # Move away from the other enemy
                     self.pos += direction * overlap  # Push the enemy out of the collision
                     # todo: modify the direction here to change the movement angle
     
     def should_hide(self, player):
         return (self.pos - player.pos).length() < 300
-
-
+    
+    def evade(enemy, target):
+        # Move in the opposite direction of the target
+        return (enemy.pos - target.pos).normalize()
 

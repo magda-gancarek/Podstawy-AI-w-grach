@@ -26,10 +26,16 @@ enemies = spawn_enemy(obstacles)
 clock = pygame.time.Clock()
 running = True
 
+target_position = pygame.Vector2(0, 0)
+
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            # Update target position to mouse click location
+            # for seek 
+            target_position = pygame.Vector2(pygame.mouse.get_pos())
 
     keys = pygame.key.get_pressed()
     player.check_player_collision(obstacles)
@@ -45,6 +51,8 @@ while running:
 
     # Draw enemies
     for e in enemies:
+        #e.seek(target_position)
+        e.wander(screen)
         e.draw_enemy(screen)
         e.update(player, enemies, obstacles, screen)
 
