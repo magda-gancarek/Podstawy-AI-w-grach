@@ -31,6 +31,7 @@ class Enemy(MovingEntity):
         self.wander_target = pygame.Vector2(0, 0)  # Initialize wander target
         self.max_force = 0.1
         self.acceleration = pygame.Vector2(0, 0)
+        self.feelers = []
 
     def draw_enemy(self, screen):        
         front_x = self.pos.x + self.radius * math.cos(math.radians(self.angle))
@@ -48,21 +49,32 @@ class Enemy(MovingEntity):
         pygame.draw.polygon(screen, GREEN, points)
         pygame.draw.circle(screen, "white", (front_x, front_y), 3)
 
-        # Draw direction line indicating movement direction
-        line_length = 60
-        line_end_x = front_x + line_length * math.cos(math.radians(self.angle))
-        line_end_y = front_y - line_length * math.sin(math.radians(self.angle))
-        pygame.draw.line(screen, RED, (front_x, front_y), (line_end_x, line_end_y), 2)
+        # # Draw direction line indicating movement direction
+        # line_length = 60
+        # line_end_x = front_x + line_length * math.cos(math.radians(self.angle))
+        # line_end_y = front_y - line_length * math.sin(math.radians(self.angle))
+        # pygame.draw.line(screen, RED, (front_x, front_y), (line_end_x, line_end_y), 2)
+
+        # Draw feelers for wall avoidance
+        feeler_angles = [0, 30, -30]  # Feelers: straight, right, left
+        self.feelers = []
+        feeler_lenght = 60
+        for angle in feeler_angles:
+            direction = self.velocity.rotate(angle).normalize()
+            feeler_end = self.pos + direction * feeler_lenght
+            self.feelers.append((self.pos, feeler_end))
+        for start, end in self.feelers:
+            pygame.draw.line(screen, "red", start, end, 1)
 
         # draw rectangle for obsticles avoidance
         line_length_rect = 200
         line_left_end_x = left_x + line_length_rect * math.cos(math.radians(self.angle))
         line_left_end_y = left_y - line_length_rect * math.sin(math.radians(self.angle))
-        pygame.draw.line(screen, "grey", (left_x, left_y), (line_left_end_x, line_left_end_y), 2)
+        pygame.draw.line(screen, "grey", (left_x, left_y), (line_left_end_x, line_left_end_y), 1)
 
         line_right_end_x = right_x + line_length_rect * math.cos(math.radians(self.angle))
         line_right_end_y = right_y - line_length_rect * math.sin(math.radians(self.angle))
-        pygame.draw.line(screen, "grey", (right_x, right_y), (line_right_end_x, line_right_end_y), 2)
+        pygame.draw.line(screen, "grey", (right_x, right_y), (line_right_end_x, line_right_end_y), 1)
 
 
     def seek(self, target):
@@ -138,6 +150,28 @@ class Enemy(MovingEntity):
                 # Resolve collision with other enemies
                 self.resolve_enemy_collisions(enemies)
 
+
+    def wall_avoidance(self, walls):
+        for x,y in self.feelers:
+            print(x,y)
+            for wall in walls:
+                intersection = self.are_lines_intersecting(x,y, wall.start, wall.end)
+                if intersection:
+                    self.velocity = wall.normal
+    
+    def are_lines_intersecting(self, p1, p2, p3, p4):
+        """Returns intersection point of lines if they intersect."""
+        denom = (p1[0] - p2[0]) * (p3[1] - p4[1]) - (p1[1] - p2[1]) * (p3[0] - p4[0])
+        if denom == 0:
+            return None  # Lines are parallel
+
+        intersect_x = ((p1[0] * p2[1] - p1[1] * p2[0]) * (p3[0] - p4[0]) - (p1[0] - p2[0]) * (p3[0] * p4[1] - p3[1] * p4[0])) / denom
+        intersect_y = ((p1[0] * p2[1] - p1[1] * p2[0]) * (p3[1] - p4[1]) - (p1[1] - p2[1]) * (p3[0] * p4[1] - p3[1] * p4[0])) / denom
+
+        if min(p1[0], p2[0]) <= intersect_x <= max(p1[0], p2[0]) and min(p1[1], p2[1]) <= intersect_y <= max(p1[1], p2[1]) \
+                and min(p3[0], p4[0]) <= intersect_x <= max(p3[0], p4[0]) and min(p3[1], p4[1]) <= intersect_y <= max(p3[1], p4[1]):
+            return (intersect_x, intersect_y)
+        return None
 
     '''
     def update(self, player, enemies, obstacles, screen):
