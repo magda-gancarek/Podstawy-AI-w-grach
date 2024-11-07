@@ -7,6 +7,7 @@ import sys
 from utils import check_collision, distance_between_points
 #from steering_behaviors import hide, wander, evade
 
+#TODO: arrive behaviour
 
 def spawn_enemy(obstacles):
     enemies = []
@@ -28,7 +29,7 @@ class Enemy(MovingEntity):
         self.angle = 0
         self.radius = ENEMY_RADIUS
         self.max_speed = ENEMY_SPEED
-        self.velocity = pygame.Vector2(1,0) # default direction #TODO: arrive behaviour
+        self.velocity = pygame.Vector2(1,0) # default direction 
         # Vector perpendicular to direction 
         self.side = self.velocity.rotate(90).normalize()
 
@@ -37,7 +38,8 @@ class Enemy(MovingEntity):
         self.acceleration = pygame.Vector2(0, 0)
         self.feelers = []
 
-    def draw_enemy(self, screen):        
+    def draw_enemy(self, screen): 
+        # triangle       
         front_x = self.pos.x + self.radius * math.cos(math.radians(self.angle))
         front_y = self.pos.y - self.radius * math.sin(math.radians(self.angle))
 
@@ -49,8 +51,8 @@ class Enemy(MovingEntity):
 
         points = [(front_x, front_y), (left_x, left_y), (right_x, right_y)]
 
-        pygame.draw.circle(screen, RED, (self.pos.x, self.pos.y), self.radius)
-        pygame.draw.polygon(screen, GREEN, points)
+        pygame.draw.circle(screen, "darksalmon", (self.pos.x, self.pos.y), self.radius)
+        pygame.draw.polygon(screen, "coral3", points)
         pygame.draw.circle(screen, "white", (front_x, front_y), 3)
 
         # # Draw direction line indicating movement direction
@@ -58,27 +60,6 @@ class Enemy(MovingEntity):
         # line_end_x = front_x + line_length * math.cos(math.radians(self.angle))
         # line_end_y = front_y - line_length * math.sin(math.radians(self.angle))
         # pygame.draw.line(screen, RED, (front_x, front_y), (line_end_x, line_end_y), 2)
-
-        # Draw feelers for wall avoidance
-        feeler_angles = [0, 30, -30]  # Feelers: straight, right, left
-        self.feelers = []
-        feeler_lenght = 60
-        for angle in feeler_angles:
-            direction = self.velocity.rotate(angle).normalize()
-            feeler_end = self.pos + direction * feeler_lenght
-            self.feelers.append((self.pos, feeler_end))
-        for start, end in self.feelers:
-            pygame.draw.line(screen, "red", start, end, 1)
-
-        # # draw rectangle for obsticles avoidance
-        # line_length_rect = 200
-        # line_left_end_x = left_x + line_length_rect * math.cos(math.radians(self.angle))
-        # line_left_end_y = left_y - line_length_rect * math.sin(math.radians(self.angle))
-        # pygame.draw.line(screen, "grey", (left_x, left_y), (line_left_end_x, line_left_end_y), 1)
-
-        # line_right_end_x = right_x + line_length_rect * math.cos(math.radians(self.angle))
-        # line_right_end_y = right_y - line_length_rect * math.sin(math.radians(self.angle))
-        # pygame.draw.line(screen, "grey", (right_x, right_y), (line_right_end_x, line_right_end_y), 1)
 
 
     def seek(self, target):
@@ -195,26 +176,59 @@ class Enemy(MovingEntity):
                 # Resolve collision with other enemies
                 self.resolve_enemy_collisions(enemies)
 
-    def wall_avoidance(self, walls):
+    def wall_avoidance(self, screen, walls):
+        # Draw feelers 
+        feeler_angles = [0, 30, -30]  # Feelers: straight, right, left
+        self.feelers = []
+        feeler_lenght = 100
+        for angle in feeler_angles:
+            direction = self.velocity.rotate(angle).normalize()
+            feeler_end = self.pos + direction * feeler_lenght
+            self.feelers.append((self.pos, feeler_end))
+        for start, end in self.feelers:
+            pygame.draw.line(screen, "coral", start, end, 1)
+
+        dist_to_closest_wall = sys.maxsize
+        closest_wall = None
+        closest_point = pygame.Vector2(0.0, 0.0)
+
         for x,y in self.feelers:
             for wall in walls:
-                intersection = self.are_lines_intersecting(x,y, wall.start, wall.end)
+                intersection, distance_to_wall, point_of_intersection = self.are_lines_intersecting(x,y, wall.start, wall.end)
                 if intersection:
-                    self.velocity = wall.normal
+                    pygame.draw.line(screen, "red", wall.start, wall.end, 2)
+                    if distance_to_wall < dist_to_closest_wall:
+                        dist_to_closest_wall = distance_to_wall
+                        closest_wall = wall
+                        closest_point = point_of_intersection
+
+            if closest_wall:
+                feeler = pygame.Vector2(x,y)
+                overshoot = feeler - closest_point
+                # create force away from wall
+                steering_force = closest_wall.normal * overshoot.length() * 2
+                self.apply_steering(steering_force)
     
-    def are_lines_intersecting(self, p1, p2, p3, p4):
-        """Returns intersection point of lines if they intersect."""
-        denom = (p1[0] - p2[0]) * (p3[1] - p4[1]) - (p1[1] - p2[1]) * (p3[0] - p4[0])
-        if denom == 0:
-            return None  # Lines are parallel
+    def are_lines_intersecting(self, A, B, C, D):
+        rTop = (A.y - C.y) * (D.x - C.x) - (A.x - C.x) * (D.y - C.y)
+        rBot = (B.x - A.x) * (D.y - C.y) - (B.y - A.y) * (D.x - C.x)
 
-        intersect_x = ((p1[0] * p2[1] - p1[1] * p2[0]) * (p3[0] - p4[0]) - (p1[0] - p2[0]) * (p3[0] * p4[1] - p3[1] * p4[0])) / denom
-        intersect_y = ((p1[0] * p2[1] - p1[1] * p2[0]) * (p3[1] - p4[1]) - (p1[1] - p2[1]) * (p3[0] * p4[1] - p3[1] * p4[0])) / denom
+        sTop = (A.y - C.y) * (B.x - A.x) - (A.x - C.x) * (B.y - A.y)
+        sBot = (B.x - A.x) * (D.y - C.y) - (B.y - A.y) * (D.x - C.x)
 
-        if min(p1[0], p2[0]) <= intersect_x <= max(p1[0], p2[0]) and min(p1[1], p2[1]) <= intersect_y <= max(p1[1], p2[1]) \
-                and min(p3[0], p4[0]) <= intersect_x <= max(p3[0], p4[0]) and min(p3[1], p4[1]) <= intersect_y <= max(p3[1], p4[1]):
-            return (intersect_x, intersect_y)
-        return None
+        if (rBot == 0) or (sBot == 0):
+            # lines are parallel
+            return False, None, None
+
+        r = rTop / rBot
+        s = sTop / sBot
+
+        if (r > 0) and (r < 1) and (s > 0) and (s < 1):
+            dist = pygame.math.Vector2.distance_to(A, B) * r
+            point = A + r * (B - A)
+            return True, dist, point
+        else:
+            return False, 0, None
 
     def get_obstacles_within_view_range(self, obstacles, view_range):
         found = []

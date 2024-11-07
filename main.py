@@ -65,9 +65,8 @@ while running:
     for e in enemies:
         #e.seek(target_position)
         #e.flee(target_position)
-        e.wander(screen)
-        # bez włączenego wander zmienia rysowanie boxa w obsticle avoidance XD
-        e.wall_avoidance(walls)
+        e.wander(screen) # bez włączenego wander zmienia rysowanie boxa w obsticle avoidance XD
+        e.wall_avoidance(screen, walls)
         e.obstacle_avoidance(screen, obstacles)
 
         e.draw_enemy(screen)
@@ -76,7 +75,6 @@ while running:
 
     # Draw player
     player.draw(screen)
-    player.draw_triangle(screen)
     player.draw_light_beam(screen)
 
     # Update the display

@@ -33,6 +33,10 @@ class Player(MovingEntity):
         dx = mouse_x - self.pos.x
         dy = self.pos.y - mouse_y  # Invert dy because y-coordinates in Pygame increase downwards
         self.angle = math.degrees(math.atan2(dy, dx))
+    def draw(self, screen):
+        pygame.draw.circle(screen, "chartreuse4", (int(self.pos.x), int(self.pos.y)), self.radius)
+        self.draw_triangle(screen)
+        
 
     def draw_triangle(self, screen):
         # Calculate the points of the triangle
@@ -46,7 +50,7 @@ class Player(MovingEntity):
         right_y = self.pos.y - self.size * math.sin(math.radians(self.angle + 240))
 
         points = [(front_x, front_y), (left_x, left_y), (right_x, right_y)]
-        pygame.draw.polygon(screen, GREEN, points)
+        pygame.draw.polygon(screen, "darkgreen", points)
 
         # Draw the direction line from the front of the triangle
         line_length = 200
@@ -81,7 +85,7 @@ class Player(MovingEntity):
             
         # Draw transparent shape
         beam_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-        pygame.draw.polygon(beam_surface, TRANSPARENT_YELLOW, points)
+        #pygame.draw.polygon(beam_surface, TRANSPARENT_YELLOW, points)
         screen.blit(beam_surface, (0, 0))
 
     def check_player_collision(self, obstacles):
