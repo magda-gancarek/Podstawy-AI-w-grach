@@ -199,13 +199,13 @@ class Enemy(MovingEntity):
         if self.velocity.length() > 0:  # If there's a valid direction
             self.angle = self.velocity.angle_to(pygame.Vector2(1, 0))
 
-        self.acceleration = pygame.Vector2(0, 0)
-
         # Calculate the potential new position
         potential_pos = self.pos + (self.velocity * self.max_speed)
 
         # Check if the potential position is within screen bounds
-        if 0 <= potential_pos.x <= SCREEN_WIDTH and 0 <= potential_pos.y <= SCREEN_HEIGHT:
+        #if 0 <= potential_pos.x <= SCREEN_WIDTH and 0 <= potential_pos.y <= SCREEN_HEIGHT:
+        # inside  walls
+        if 20 <= potential_pos.x <= SCREEN_WIDTH-20 and 20 <= potential_pos.y <= SCREEN_HEIGHT-20:
             # Create a temporary object to check collisions
             temp_enemy = MovingEntity(potential_pos, self.radius, self.max_speed)
 
@@ -216,6 +216,9 @@ class Enemy(MovingEntity):
             else:
                 # Resolve collision with other enemies
                 self.resolve_enemy_collisions(enemies)
+        # RESET
+        self.acceleration = pygame.Vector2(0, 0)
+        self.velocity = self.velocity.normalize()
 
     def wall_avoidance(self, screen, walls):
         # Draw feelers 
@@ -248,6 +251,8 @@ class Enemy(MovingEntity):
                 overshoot = feeler - closest_point
                 # create force away from wall
                 steering_force = closest_wall.normal * overshoot.length()
+                if steering_force.length() > self.max_force:
+                    steering_force = steering_force.normalize() * self.max_force
                 self.apply_steering(steering_force)
     
     def are_lines_intersecting(self, A, B, C, D):
@@ -334,8 +339,9 @@ class Enemy(MovingEntity):
                 steering_force.x = (bounding_radius - local_pos_of_closest_obstacle.x) * self.break_weight
 
                 # convert the steering vector to global space
-                s = self.vector_to_world_2d(steering_force, self.pos, self.angle)
-                steering_force = s
+                steering_force = self.vector_to_world_2d(steering_force, self.pos, self.angle)
+                if steering_force.length() > self.max_force:
+                    steering_force = steering_force.normalize() * self.max_force
                 self.apply_steering(steering_force)
 
     def point_to_local_2d(self, global_point,object_position, object_rotation):
