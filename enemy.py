@@ -128,7 +128,6 @@ class Enemy(MovingEntity):
                 steering_force = steering_force.normalize() * self.max_force
 
             # Apply the steering force to the agent's acceleration
-            print(steering_force)
             self.apply_steering(steering_force)
 
 
@@ -349,6 +348,29 @@ class Enemy(MovingEntity):
         point = point + object_position
         return point
 
+    def find_hiding_spot(self, screen, player, obstacles):
+        best_hiding_spot = None
+        best_distance = sys.maxsize
+        bounding = 40
+        for obstacle in obstacles:
+
+            direction_to_obstacle = (obstacle.pos - player.pos).normalize()
+            pygame.draw.line(screen, "grey", player.pos, obstacle.pos, 2)
+            # Place the hiding spot slightly behind the obstacle from the player's perspective
+            hiding_spot = obstacle.pos + direction_to_obstacle * (obstacle.radius + bounding)
+            pygame.draw.circle(screen, "grey", hiding_spot, 5, 5)
+
+            # Measure distance from the agent to this hiding spot
+            distance_to_hiding_spot = (hiding_spot - self.pos).length()
+
+            # Choose the closest hiding spot to the agent
+            if distance_to_hiding_spot < best_distance:
+                best_distance = distance_to_hiding_spot
+                best_hiding_spot = hiding_spot
+
+        pygame.draw.circle(screen, "green", best_hiding_spot, 5, 5)
+
+        return best_hiding_spot, best_distance
 
     '''
     def update(self, player, enemies, obstacles, screen):
@@ -406,4 +428,9 @@ class Enemy(MovingEntity):
     def evade(enemy, target):
         # Move in the opposite direction of the target
         return (enemy.pos - target.pos).normalize()
+    
+    def evade_move(self, target):
+        # Move in the opposite direction of the target
+        steering_force =  (self.pos - target.pos).normalize()
+        self.apply_steering(steering_force)
 
