@@ -13,13 +13,15 @@ WHITE = (255, 255, 255)
 
 FPS = 30
 
-ENEMY_COUNT = 2
+PLAYER_SIZE  = 15
+
+ENEMY_COUNT = 1
 ENEMY_RADIUS = 15
-ENEMY_SPEED = 3
+ENEMY_SPEED = 5
 
 OBSTICLE_COUNT = 10
 
 # Wander parameters
 WANDER_RADIUS = 70   # Radius of the wander circle
 WANDER_DISTANCE = 100  # Distance the wander circle is projected in front of the agent
-WANDER_JITTER = 10.0   # Maximum displacement added to the wander target each second
+WANDER_JITTER = 20.0   # Maximum displacement added to the wander target each second

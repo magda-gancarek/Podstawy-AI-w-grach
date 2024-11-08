@@ -8,8 +8,8 @@ class Player(MovingEntity):
     def __init__(self, pos):
         self.angle = 0
         self.speed = 5
-        self.size = 30
-        self.radius = 30
+        self.size = PLAYER_SIZE
+        self.radius = PLAYER_SIZE
         self.pos = pos
         self.health = 100
 

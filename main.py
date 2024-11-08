@@ -68,13 +68,13 @@ while running:
     # Draw enemies
     for e in enemies:
         #e.arrive(screen, target_position)
-        #e.seek(target_position)
-        #e.flee(target_position)
-        e.wander(screen) # bez włączenego wander zmienia rysowanie boxa w obsticle avoidance XD
-        e.wall_avoidance(screen, walls)
-        e.obstacle_avoidance(screen, obstacles)
+        #e.seek(screen, target_position)
+        #e.flee(screen, target_position)
+        # e.wander(screen) # bez włączenego wander zmienia rysowanie boxa w obsticle avoidance XD
+        # e.wall_avoidance(screen, walls)
+        # e.obstacle_avoidance(screen, obstacles)
 
-        # Check if the agent should hide
+        # # Check if the agent should hide
         # distance_to_enemy = (e.pos - player.pos).length()
         # danger_zone = 300
         # pygame.draw.circle(screen, "red", player.pos, danger_zone, 1)
@@ -82,13 +82,15 @@ while running:
         #     hiding_spot, distance = e.find_hiding_spot(screen, player, obstacles)
         #     # Move agent to hiding spot
         #     if distance == sys.maxsize:
-        #         e.evade_move(hiding_spot)
+        #         e.evade_move(screen, hiding_spot)
         #     else:
         #         steering = e.arrive(screen, hiding_spot)
 
+        e.update_sum_force(player, enemies, obstacles, walls, screen)
+
 
         e.draw_enemy(screen)
-        e.update(player, enemies, obstacles, screen)
+        #e.update(player, enemies, obstacles, walls, screen)
         
 
 
