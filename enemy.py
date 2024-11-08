@@ -7,8 +7,6 @@ import sys
 from utils import check_collision, distance_between_points
 #from steering_behaviors import hide, wander, evade
 
-#TODO: arrive behaviour
-
 def spawn_enemy(obstacles):
     enemies = []
     # Spawn an enemy at a random position, avoiding obstacles
@@ -22,6 +20,16 @@ def spawn_enemy(obstacles):
             enemies.append(enemy)
     return enemies
 
+
+# Function to blend colors from green to red based on a value (0 to 200)
+def blend_color(value, max_value=200):
+    # Clamp value between 0 and max_value
+    value = max(0, min(value, max_value))
+    # Calculate the ratio for blending (1 means green, 0 means red)
+    ratio = value / max_value
+    red = int(255 * (1 - ratio))
+    green = int(255 * ratio)
+    return (red, green, 0)  # Blue remains 0 to keep it in the green-red spectrum
 
 class Enemy(MovingEntity):
     def __init__(self, pos):
@@ -90,7 +98,40 @@ class Enemy(MovingEntity):
         # Apply the steering force to the agent's acceleration
         self.apply_steering(steering_force)
 
-    
+    def arrive(self, screen, target_pos):
+        # Calculate the desired velocity
+        to_target = target_pos - self.pos
+        distance = to_target.length()
+        slowing_radius = 200
+
+        pygame.draw.circle(screen, "red", target_pos, 2, 2)
+        pygame.draw.circle(screen, "green", target_pos, slowing_radius, 1)
+
+        # If we're close enough to the target, stop
+        if distance < 2:
+            self.velocity =  pygame.Vector2(0, 0)
+        else:
+            # Scale the speed according to distance within the slowing radius
+            if distance < slowing_radius:
+                desired_speed = self.max_speed * (distance / slowing_radius)
+                pygame.draw.circle(screen, blend_color(distance), target_pos, distance, 1)
+            else:
+                desired_speed = self.max_speed
+
+            # Set the desired velocity towards the target with the calculated speed
+            desired_velocity = to_target.normalize() * desired_speed
+            
+            # Calculate the steering force
+            steering_force = desired_velocity - self.velocity
+            # Limit the steering force to max_force
+            if steering_force.length() > self.max_force:
+                steering_force = steering_force.normalize() * self.max_force
+
+            # Apply the steering force to the agent's acceleration
+            print(steering_force)
+            self.apply_steering(steering_force)
+
+
     def wander(self, screen):
         # Random jitter for the wander target
         jitter = pygame.Vector2(
@@ -158,6 +199,7 @@ class Enemy(MovingEntity):
         # Update the angle based on the direction
         if self.velocity.length() > 0:  # If there's a valid direction
             self.angle = self.velocity.angle_to(pygame.Vector2(1, 0))
+
         self.acceleration = pygame.Vector2(0, 0)
 
         # Calculate the potential new position
@@ -206,7 +248,7 @@ class Enemy(MovingEntity):
                 feeler = pygame.Vector2(x,y)
                 overshoot = feeler - closest_point
                 # create force away from wall
-                steering_force = closest_wall.normal * overshoot.length() * 2
+                steering_force = closest_wall.normal * overshoot.length()
                 self.apply_steering(steering_force)
     
     def are_lines_intersecting(self, A, B, C, D):
