@@ -2,7 +2,7 @@ import pygame
 from player import Player
 from enemy import spawn_enemy
 from obstacle import Obstacle
-from settings import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, OBSTICLE_COUNT
+from settings import FPS, OBSTICLE_COUNT, SCREEN_HEIGHT, SCREEN_WIDTH, screen
 import sys
 import random
 from wall import Wall
@@ -11,7 +11,7 @@ from utils import check_collision
 pygame.init()
 
 # Set up the display
-screen = pygame.display.set_mode((SCREEN_WIDTH + 40, SCREEN_HEIGHT+40))
+
 
 # Initialize player, obstacles, and enemies
 player = Player(pygame.Vector2(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
@@ -26,10 +26,10 @@ for _ in range(OBSTICLE_COUNT):
         obstacles.append(o)
 
 walls = [
-            Wall(pygame.Vector2(SCREEN_WIDTH , 0+20), pygame.Vector2(0+20, 0+20)), # -
-            Wall(pygame.Vector2(0+20, SCREEN_HEIGHT), pygame.Vector2(SCREEN_WIDTH , SCREEN_HEIGHT)), # _
-            Wall(pygame.Vector2(0+20, 0+20), pygame.Vector2(0+20 , SCREEN_HEIGHT)), # | <-
-            Wall(pygame.Vector2(SCREEN_WIDTH , SCREEN_HEIGHT), pygame.Vector2(SCREEN_WIDTH, 0+20)), # -> |
+            Wall(pygame.Vector2(SCREEN_WIDTH-20 , 0+20), pygame.Vector2(0+20, 0+20)), # -
+            Wall(pygame.Vector2(0+20, SCREEN_HEIGHT-40), pygame.Vector2(SCREEN_WIDTH-20 , SCREEN_HEIGHT-40)), # _
+            Wall(pygame.Vector2(0+20, 0+20), pygame.Vector2(0+20 , SCREEN_HEIGHT-40)), # | <-
+            Wall(pygame.Vector2(SCREEN_WIDTH-20 , SCREEN_HEIGHT-40), pygame.Vector2(SCREEN_WIDTH-20, 0+20)), # -> |
          ]
 
 enemies = spawn_enemy(obstacles)

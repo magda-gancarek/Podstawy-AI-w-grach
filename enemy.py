@@ -4,8 +4,7 @@ from entity import MovingEntity
 import math
 from settings import *
 import sys
-from utils import check_collision, distance_between_points
-#from steering_behaviors import hide, wander, evade
+from utils import check_collision, distance_between_points, check_collision_plus_bounding
 
 SEEK = False
 FLEE = False
@@ -14,8 +13,8 @@ INTERPOSE = False
 WANDER = True
 PURSUIT = False
 EVADE = False
-OBSTACLEAVOIDANCE = False
-WALLAVOIDANCE = False
+OBSTACLEAVOIDANCE = True
+WALLAVOIDANCE = True
 HIDE = False
 COHESION = False
 SEPARATION = False
@@ -25,7 +24,7 @@ weightseek = 1
 weightarrive = 1
 weightflee  = 1
 weightinterpose = 1
-weightwander = 10
+weightwander = 1.0
 weightpursuit = 1
 weightevade = 0.01
 weightobstacleavoidance = 100.0
@@ -48,13 +47,13 @@ def blend_color(value, max_value=200):
 def spawn_enemy(obstacles):
     enemies = []
     # Spawn an enemy at a random position, avoiding obstacles
-    for _ in range(ENEMY_COUNT):
+    while len(enemies) < ENEMY_COUNT:
         x = random.randint(ENEMY_RADIUS, SCREEN_WIDTH - ENEMY_RADIUS)
         y = random.randint(ENEMY_RADIUS, SCREEN_HEIGHT - ENEMY_RADIUS)
         enemy_pos = pygame.Vector2(x, y)
         enemy = Enemy(enemy_pos)
         # Check if this position collides with any obstacle
-        if not check_collision(enemy, obstacles):
+        if not check_collision_plus_bounding(enemy, obstacles):
             enemies.append(enemy)
     return enemies
 
@@ -69,7 +68,7 @@ class Enemy(MovingEntity):
         self.radius = ENEMY_RADIUS
         self.mass = 1.0
         self.max_speed = ENEMY_SPEED
-        self.max_force = 0.1
+        self.max_force = 0.3
         self.velocity = pygame.Vector2(1,0) # default direction 
         self.direction = self.velocity.normalize()
         self.side = self.velocity.rotate(90).normalize() # Vector perpendicular to direction 
@@ -137,14 +136,14 @@ class Enemy(MovingEntity):
         # Calculate the desired velocity
         to_target = target_pos - self.pos
         distance = to_target.length()
-        slowing_radius = 200
+        slowing_radius = 100
 
         pygame.draw.circle(screen, "red", target_pos, 2, 2)
         pygame.draw.circle(screen, "green", target_pos, slowing_radius, 1)
 
         # If we're close enough to the target, stop
-        if distance < 2:
-            self.velocity =  pygame.Vector2(0, 0)
+        if distance < 1:
+            return pygame.Vector2(0, 0)
         else:
             # Scale the speed according to distance within the slowing radius
             if distance < slowing_radius:
@@ -158,12 +157,15 @@ class Enemy(MovingEntity):
             
             # Calculate the steering force
             steering_force = desired_velocity - self.velocity
+            return steering_force
+            '''
             # Limit the steering force to max_force
             if steering_force.length() > self.max_force:
                 steering_force = steering_force.normalize() * self.max_force
 
             # Apply the steering force to the agent's acceleration
             self.apply_steering(steering_force)
+            '''
 
     def wander(self, screen):
         # Random jitter for the wander target
@@ -188,11 +190,15 @@ class Enemy(MovingEntity):
         steering_force = (wander_point - self.pos).normalize() * self.max_force
         self.apply_steering(steering_force)
         '''
-        steering_force = wander_point - self.pos
-        # (wander_point - self.pos).normalize() * self.max_force
-        return steering_force
 
-        
+        steering_force = wander_point - self.pos
+        '''
+        if steering_force.length() > self.max_force:
+                steering_force = steering_force.normalize() * self.max_force
+        '''
+        # (wander_point - self.pos).normalize() * self.max_force
+        #print(steering_force)
+        return steering_force
 
     def wall_avoidance(self, screen, walls):
         # Draw feelers 
@@ -209,6 +215,7 @@ class Enemy(MovingEntity):
         dist_to_closest_wall = sys.maxsize
         closest_wall = None
         closest_point = pygame.Vector2(0.0, 0.0)
+        steering_force = pygame.Vector2(0.0, 0.0)
 
         for x,y in self.feelers:
             for wall in walls:
@@ -225,9 +232,11 @@ class Enemy(MovingEntity):
                 overshoot = feeler - closest_point
                 # create force away from wall
                 steering_force = closest_wall.normal * overshoot.length()
+                '''
                 if steering_force.length() > self.max_force:
-                    steering_force = steering_force.normalize() * self.max_force
-                self.apply_steering(steering_force)
+                    steering_force = steering_force.normalize() * self.
+                '''
+        return steering_force
     
     def are_lines_intersecting(self, A, B, C, D):
         rTop = (A.y - C.y) * (D.x - C.x) - (A.x - C.x) * (D.y - C.y)
@@ -259,21 +268,23 @@ class Enemy(MovingEntity):
         return found
 
     def obstacle_avoidance(self, screen, obsticles):
-        lenght = 200
+        lenght = BOUNDING - 20
         bounding = 20
-        side = self.velocity.rotate(90).normalize()
-        p1 = (self.pos + lenght * self.velocity + bounding * side)
-        p2 = (self.pos + lenght * self.velocity - bounding * side)
-        p3 = (self.pos - bounding * side)
-        p4 = (self.pos + bounding * side)
+        #side = self.velocity.rotate(90).normalize()
+        p1 = (self.pos + lenght * self.direction + bounding * self.side)
+        p2 = (self.pos + lenght * self.direction - bounding * self.side)
+        p3 = (self.pos - bounding * self.side)
+        p4 = (self.pos + bounding * self.side)
         pygame.draw.lines(screen, "grey", True, [p1, p2, p3, p4])
-        pygame.draw.line(screen, "grey", self.pos, self.pos + self.velocity * lenght, 2)
+        pygame.draw.line(screen, "grey", self.pos, self.pos + self.direction * lenght, 2)
 
+        # calculte steering force away from obstacle
+        steering_force = pygame.Vector2(0.0, 0.0)
         _obstacles = self.get_obstacles_within_view_range(obsticles, lenght)
         closest_intersecting_obstacle = None
-        dist_to_closest_IP = 10000
+        dist_to_closest_IP = sys.maxsize
         local_pos_of_closest_obstacle = pygame.Vector2(0.0, 0.0)
-        bounding_radius = 20
+        bounding_radius = 30
         for o in _obstacles:
             circle_x, circle_y = self.point_to_local_2d(o.pos,self.pos, self.angle)
             # obstacles behind the vehicle are ignored
@@ -299,24 +310,26 @@ class Enemy(MovingEntity):
                         dist_to_closest_IP = ip
                         closest_intersecting_obstacle = o
                         local_pos_of_closest_obstacle = pygame.Vector2(circle_x, circle_y)
-                        pygame.draw.line(screen, "red", self.pos, self.pos + self.velocity * lenght, 2)
+                        pygame.draw.line(screen, "red", self.pos, self.pos + self.direction * lenght, 2)
             
-            # calculte steering force away from obstacle
-            steering_force = pygame.Vector2(0.0, 0.0)
-            if closest_intersecting_obstacle:
-                # the closer, the stronger the steering force should be
-                multiplier = 1.0 + (lenght - local_pos_of_closest_obstacle.x) / lenght
-                # lateral force
-                steering_force.y = (bounding_radius - local_pos_of_closest_obstacle.y) * multiplier
-                self.break_weight = 0.2
-                # apply a breaking force proportional to the distance to obstacle
-                steering_force.x = (bounding_radius - local_pos_of_closest_obstacle.x) * self.break_weight
 
-                # convert the steering vector to global space
-                steering_force = self.vector_to_world_2d(steering_force, self.pos, self.angle)
-                if steering_force.length() > self.max_force:
-                    steering_force = steering_force.normalize() * self.max_force
-                self.apply_steering(steering_force)
+        if closest_intersecting_obstacle:
+            # the closer, the stronger the steering force should be
+            multiplier = 1.0 + (lenght - local_pos_of_closest_obstacle.x) / lenght
+            # lateral force
+            steering_force.y = (bounding_radius - local_pos_of_closest_obstacle.y) * multiplier
+            self.break_weight = 0.2
+            # apply a breaking force proportional to the distance to obstacle
+            steering_force.x = (bounding_radius - local_pos_of_closest_obstacle.x) * self.break_weight
+
+            # convert the steering vector to global space
+            steering_force = self.vector_to_world_2d(steering_force, self.pos, self.angle)
+            '''
+            if steering_force.length() > self.max_force:
+                steering_force = steering_force.normalize() * self.max_force
+            '''
+            
+        return steering_force
 
     def point_to_local_2d(self, global_point,object_position, object_rotation):
         point = global_point - object_position
@@ -328,14 +341,14 @@ class Enemy(MovingEntity):
         point = point + object_position
         return point
 
-    def find_hiding_spot(self, screen, player, obstacles):
-        best_hiding_spot = None
-        best_distance = sys.maxsize
-        bounding = 40
+    def hide(self, screen, player, obstacles):
+        best_hiding_spot = pygame.Vector2(0.0, 0.0)
+        dist_to_closest_o = sys.maxsize
+        bounding = 50
         for obstacle in obstacles:
 
             direction_to_obstacle = (obstacle.pos - player.pos).normalize()
-            pygame.draw.line(screen, "grey", player.pos, obstacle.pos, 2)
+            pygame.draw.line(screen, "grey", player.pos, obstacle.pos, 1)
             # Place the hiding spot slightly behind the obstacle from the player's perspective
             hiding_spot = obstacle.pos + direction_to_obstacle * (obstacle.radius + bounding)
             pygame.draw.circle(screen, "grey", hiding_spot, 5, 5)
@@ -344,13 +357,16 @@ class Enemy(MovingEntity):
             distance_to_hiding_spot = (hiding_spot - self.pos).length()
 
             # Choose the closest hiding spot to the agent
-            if distance_to_hiding_spot < best_distance:
-                best_distance = distance_to_hiding_spot
+            if distance_to_hiding_spot < dist_to_closest_o:
+                dist_to_closest_o = distance_to_hiding_spot
                 best_hiding_spot = hiding_spot
 
         pygame.draw.circle(screen, "green", best_hiding_spot, 5, 5)
-
-        return best_hiding_spot, best_distance
+        if dist_to_closest_o == sys.maxsize:
+            print("LEAVE")
+            return self.evade(player)
+        print("ARRIVE")
+        return self.arrive(screen, best_hiding_spot)
 
     def check_enemy_collision(self, temp_enemy, enemies):
         for enemy in enemies:
@@ -374,16 +390,18 @@ class Enemy(MovingEntity):
                     self.pos += direction * overlap  # Push the enemy out of the collision
                     # todo: modify the direction here to change the movement angle
     
-    def should_hide(self, player):
-        return (self.pos - player.pos).length() < 300
+    def should_hide(self, screen, player):
+        danger_zone = 300
+        pygame.draw.circle(screen, "red", player.pos, danger_zone, 1)
+        return (self.pos - player.pos).length() < danger_zone
     
     def evade(enemy, target):
         # Move in the opposite direction of the target
         return (enemy.pos - target.pos).normalize()
     
-    def evade_move(self, screen, target):
+    def evade_move(self, screen, player):
         # Move in the opposite direction of the target
-        steering_force =  (self.pos - target.pos).normalize()
+        steering_force =  (self.pos - player.pos).normalize()
         self.apply_steering(steering_force)
 
 
@@ -402,63 +420,65 @@ class Enemy(MovingEntity):
         _steering_force = pygame.Vector2(0,0)
 
         if WALLAVOIDANCE:
-            print("here")
             _steering_force += self.wall_avoidance(screen, walls) * weightwallavoidance
-            print(_steering_force)
             if self.exceed_accumulate_force(_steering_force):
                 return self._steering_force
         if OBSTACLEAVOIDANCE:
+            #print("OBS")
             _steering_force += self.obstacle_avoidance(screen, obstacles) * weightobstacleavoidance
+            #print(_steering_force)
             if self.exceed_accumulate_force(_steering_force):
                 return self._steering_force
-        if EVADE:
-            _steering_force += self.evade_move(screen, self.target_agent1, self.evade_thread_range) * weightevade
-            if self.exceed_accumulate_force(_steering_force):
-                return self._steering_force
-        if FLEE:
-            _steering_force += self.flee(screen, self.target) * weightflee
-            if self.exceed_accumulate_force(_steering_force):
-                return self._steering_force
+        # if EVADE:
+        #     _steering_force += self.evade_move(screen, player) * weightevade
+        #     if self.exceed_accumulate_force(_steering_force):
+        #         return self._steering_force
+        # if FLEE:
+        #     _steering_force += self.flee(screen, self.target) * weightflee
+        #     if self.exceed_accumulate_force(_steering_force):
+        #         return self._steering_force
 
-        if SEPARATION:
-            # uses previously tagged vehicles
-            _steering_force += self.separation(self.group_vehicles) * weightseparation  # * 5
-            if self.exceed_accumulate_force(_steering_force):
-                return self._steering_force
+        # if SEPARATION:
+        #     # uses previously tagged vehicles
+        #     _steering_force += self.separation(self.group_vehicles) * weightseparation  # * 5
+        #     if self.exceed_accumulate_force(_steering_force):
+        #         return self._steering_force
             
-        if ALIGNMENT:
-            # uses previously tagged vehicles
-            _steering_force += self.alignment(self.group_vehicles) * weightalignment
-            if self.exceed_accumulate_force(_steering_force):
-                return self._steering_force
-        if COHESION:
-            # uses previously tagged vehicles
-            _steering_force += self.cohesion(self.group_vehicles) * weightcohesion  # * 0.01
-            if self.exceed_accumulate_force(_steering_force):
-                return self._steering_force
+        # if ALIGNMENT:
+        #     # uses previously tagged vehicles
+        #     _steering_force += self.alignment(self.group_vehicles) * weightalignment
+        #     if self.exceed_accumulate_force(_steering_force):
+        #         return self._steering_force
+        # if COHESION:
+        #     # uses previously tagged vehicles
+        #     _steering_force += self.cohesion(self.group_vehicles) * weightcohesion  # * 0.01
+        #     if self.exceed_accumulate_force(_steering_force):
+        #         return self._steering_force
 
-        if SEEK:
-            _steering_force += self.seek(screen, self.target) * weightseek
-            if self.exceed_accumulate_force(_steering_force):
-                return self._steering_force
-        if ARRIVE:
-            _steering_force += self.arrive(screen, self.target) * weightarrive
-            if self.exceed_accumulate_force(_steering_force):
-                return self._steering_force
+        # if SEEK:
+        #     _steering_force += self.seek(screen, self.target) * weightseek
+        #     if self.exceed_accumulate_force(_steering_force):
+        #         return self._steering_force
+        # if ARRIVE:
+        #     _steering_force += self.arrive(screen, self.target) * weightarrive
+        #     if self.exceed_accumulate_force(_steering_force):
+        #         return self._steering_force
         if WANDER:
+            #print('WANDER')
             _steering_force += self.wander(screen) * weightwander
+            #print(_steering_force)
             if self.exceed_accumulate_force(_steering_force):
                 return self._steering_force
-        if INTERPOSE:
-            _steering_force += self.interpose(self.target_agent1, self.target_agent2) * weightinterpose
-            if self.exceed_accumulate_force(_steering_force):
-                return self._steering_force
-        if PURSUIT:
-            _steering_force += self.pursuit(self.target_agent1) * weightpursuit
-            if self.exceed_accumulate_force(_steering_force):
-                return self._steering_force
+        # if INTERPOSE:
+        #     _steering_force += self.interpose(self.target_agent1, self.target_agent2) * weightinterpose
+        #     if self.exceed_accumulate_force(_steering_force):
+        #         return self._steering_force
+        # if PURSUIT:
+        #     _steering_force += self.pursuit(self.target_agent1) * weightpursuit
+        #     if self.exceed_accumulate_force(_steering_force):
+        #         return self._steering_force
         if HIDE:
-            _steering_force += self.hide(self.target_agent1, self._vehicle.obstacles) * weighthide
+            _steering_force += self.hide(screen, player, obstacles) * weighthide
             if self.exceed_accumulate_force(_steering_force):
                 return self._steering_force
 
@@ -467,6 +487,7 @@ class Enemy(MovingEntity):
     def exceed_accumulate_force(self, force: pygame.Vector2):
         # //calculate how much steering force the vehicle has used so far
         magnitude_so_far = self._steering_force.length()
+        #print(magnitude_so_far, "vs max", self.max_force)
         # //calculate how much steering force remains to be used by this vehicle
         magnitude_remaining = self.max_force - magnitude_so_far
         # //return true if there is no more force left to use
@@ -498,6 +519,16 @@ class Enemy(MovingEntity):
     '''
 
     def update_sum_force(self, player, enemies, obstacles, walls, screen):
+        global HIDE, WANDER
+        if self.should_hide(screen, player):
+            print("HIDE!")
+            WANDER = False
+            HIDE = True
+        else:
+            WANDER = True
+            HIDE = False
+      
+
         steering_force = self.calculate(player, enemies, obstacles, walls, screen)
         acceleration = steering_force / self.mass
         self.velocity += acceleration

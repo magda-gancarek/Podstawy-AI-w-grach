@@ -1,5 +1,6 @@
 import math
-import random 
+import random
+from settings import BOUNDING
 
 def distance_between_points(p1, p2):
     # Calculate distance between two points
@@ -10,6 +11,14 @@ def check_collision(object, obstacles):
         dist = distance_between_points(object, obstacle)
         # If the distance is less than the sum of radii, there's a collision
         if dist < object.radius + obstacle.radius:
+            return True
+    return False
+
+def check_collision_plus_bounding(object, obstacles):
+    for obstacle in obstacles:
+        dist = distance_between_points(object, obstacle)
+        # If the distance is less than the sum of radii, there's a collision
+        if dist < object.radius + BOUNDING + obstacle.radius:
             return True
     return False
 
