@@ -2,7 +2,7 @@ import pygame
 from player import Player
 from enemy import spawn_enemy
 from obstacle import Obstacle
-from settings import FPS, OBSTICLE_COUNT, SCREEN_HEIGHT, SCREEN_WIDTH, screen
+from settings import FPS, OBSTACLE_COUNT, SCREEN_HEIGHT, SCREEN_WIDTH, screen
 import sys
 import random
 from wall import Wall
@@ -10,14 +10,21 @@ from utils import check_collision
 
 pygame.init()
 
-# Set up the display
+# TO DO
+
+# evade chybanie działa jak powinno
+# obstacles avoidance: poprawić kolizje, czasem wchodzą na przeszkody. dlaczego?
+# strzelanie do wrogów
+# grupowanie, chciałabym nadać im jeden kolor gdy zaczynją tworzy grupę 
+# gry grupa będzie duża, atak w stornę przeciwnika
+# separation chyba też na raie nie działa jak powinno 
 
 
 # Initialize player, obstacles, and enemies
 player = Player(pygame.Vector2(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
 
 obstacles = []
-for _ in range(OBSTICLE_COUNT):
+for _ in range(OBSTACLE_COUNT):
     o = Obstacle(
         pygame.Vector2(random.randint(50, SCREEN_WIDTH - 50),random.randint(50, SCREEN_HEIGHT - 50)), 
         random.randint(20, 70) 
@@ -57,7 +64,6 @@ while running:
     # Clear screen
     screen.fill("black")
 
-
     # Draw obstacles
     for o in obstacles:
         o.draw_obstacle(screen)
@@ -70,7 +76,7 @@ while running:
         #e.arrive(screen, target_position)
         #e.seek(screen, target_position)
         #e.flee(screen, target_position)
-        # e.wander(screen) # bez włączenego wander zmienia rysowanie boxa w obsticle avoidance XD
+        # e.wander(screen) # bez włączenego wander zmienia rysowanie boxa w obstacle avoidance XD
         # e.wall_avoidance(screen, walls)
         # e.obstacle_avoidance(screen, obstacles)
 
@@ -85,14 +91,11 @@ while running:
         #         e.evade_move(screen, hiding_spot)
         #     else:
         #         steering = e.arrive(screen, hiding_spot)
+        # e.draw_enemy(screen)
+        # e.update(player, enemies, obstacles, walls, screen)
 
         e.update_sum_force(player, enemies, obstacles, walls, screen)
-
-
         e.draw_enemy(screen)
-        #e.update(player, enemies, obstacles, walls, screen)
-        
-
 
 
     # Draw player
