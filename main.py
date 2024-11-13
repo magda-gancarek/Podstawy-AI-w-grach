@@ -12,7 +12,7 @@ pygame.init()
 
 # TO DO
 
-# evade chybanie działa jak powinno
+# evade chybanie działa jak powinno -> zmienione na evade z książki
 # obstacles avoidance: poprawić kolizje, czasem wchodzą na przeszkody. dlaczego?
 # strzelanie do wrogów
 # grupowanie, chciałabym nadać im jeden kolor gdy zaczynją tworzy grupę 

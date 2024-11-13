@@ -362,8 +362,10 @@ class Enemy(MovingEntity):
         return (self.pos - player.pos).length() < danger_zone
     
     def evade(self, target):
-        # Move in the opposite direction of the target
-        return (self.pos - target.pos).normalize()
+        to_pursuer = target.pos - self.pos
+        look_ahead_time = to_pursuer.length() / (self.max_speed + target.velocity.length())
+        future_position = target.pos + target.velocity * look_ahead_time
+        return (self.pos - future_position).normalize()
 
     def group_enemies(self, screen, enemies):
         MAX_GROUP_DISTANCE = 100
