@@ -7,6 +7,11 @@ import sys
 from utils import check_collision, distance_between_points, check_collision_plus_bounding, check_collision_hiding_spots
 import time
 
+draw_debuge_walls = False
+draw_debuge_obsticles = False
+draw_debuge_arrive = False
+draw_debuge_wander = False
+draw_debuge_hide = False
 
 
 SEEK = False
@@ -129,8 +134,9 @@ class Enemy(MovingEntity):
         distance = to_target.length()
         slowing_radius = 100
 
-        pygame.draw.circle(screen, "red", target_pos, 2, 2)
-        pygame.draw.circle(screen, "green", target_pos, slowing_radius, 1)
+        if draw_debuge_arrive:
+            pygame.draw.circle(screen, "red", target_pos, 2, 2)
+            pygame.draw.circle(screen, "green", target_pos, slowing_radius, 1)
 
         # If we're close enough to the target, stop
         if distance < 1:
@@ -139,7 +145,8 @@ class Enemy(MovingEntity):
             # Scale the speed according to distance within the slowing radius
             if distance < slowing_radius:
                 desired_speed = self.max_speed * (distance / slowing_radius)
-                pygame.draw.circle(screen, blend_color(distance), target_pos, distance, 1)
+                if draw_debuge_arrive:
+                    pygame.draw.circle(screen, blend_color(distance), target_pos, distance, 1)
             else:
                 desired_speed = self.max_speed
 
@@ -165,8 +172,9 @@ class Enemy(MovingEntity):
         wander_center = self.pos + self.velocity.normalize() * WANDER_DISTANCE
         wander_point = wander_center + self.wander_target
 
-        pygame.draw.circle(screen, "grey", (int(wander_center.x), int(wander_center.y)), WANDER_RADIUS, 1)
-        pygame.draw.circle(screen, "red", (int(wander_point.x), int(wander_point.y)), 5)
+        if draw_debuge_wander:
+            pygame.draw.circle(screen, "grey", (int(wander_center.x), int(wander_center.y)), WANDER_RADIUS, 1)
+            pygame.draw.circle(screen, "red", (int(wander_point.x), int(wander_point.y)), 5)
 
         steering_force = wander_point - self.pos
 
@@ -181,8 +189,9 @@ class Enemy(MovingEntity):
             direction = self.velocity.rotate(angle).normalize()
             feeler_end = self.pos + direction * feeler_lenght
             self.feelers.append((self.pos, feeler_end))
-        for start, end in self.feelers:
-            pygame.draw.line(screen, "coral", start, end, 1)
+        if draw_debuge_walls:
+            for start, end in self.feelers:
+                pygame.draw.line(screen, "coral", start, end, 1)
 
         dist_to_closest_wall = sys.maxsize
         closest_wall = None
@@ -193,7 +202,8 @@ class Enemy(MovingEntity):
             for wall in walls:
                 intersection, distance_to_wall, point_of_intersection = self.are_lines_intersecting(x,y, wall.start, wall.end)
                 if intersection:
-                    pygame.draw.line(screen, "red", wall.start, wall.end, 2)
+                    if draw_debuge_walls:
+                        pygame.draw.line(screen, "red", wall.start, wall.end, 2)
                     if distance_to_wall < dist_to_closest_wall:
                         dist_to_closest_wall = distance_to_wall
                         closest_wall = wall
@@ -246,8 +256,9 @@ class Enemy(MovingEntity):
         p2 = (self.pos + lenght * self.direction - bounding * self.side)
         p3 = (self.pos - bounding * self.side)
         p4 = (self.pos + bounding * self.side)
-        pygame.draw.lines(screen, "grey", True, [p1, p2, p3, p4])
-        pygame.draw.line(screen, "grey", self.pos, self.pos + self.direction * lenght, 2)
+        if draw_debuge_obsticles:
+            pygame.draw.lines(screen, "grey", True, [p1, p2, p3, p4])
+            pygame.draw.line(screen, "grey", self.pos, self.pos + self.direction * lenght, 2)
 
         # calculte steering force away from obstacle
         steering_force = pygame.Vector2(0.0, 0.0)
@@ -262,7 +273,8 @@ class Enemy(MovingEntity):
             if circle_x >= 0:
                 
                 expanded_radius = o.radius + bounding_radius
-                pygame.draw.circle(screen, "grey", (o.pos.x, o.pos.y), expanded_radius, 1)
+                if draw_debuge_arrive:
+                    pygame.draw.circle(screen, "grey", (o.pos.x, o.pos.y), expanded_radius, 1)
                 # Checks to see if any obstacles overlap the detection box 
                 # Compare local y value with the sum of half of the box’s width and the radius of obstacles
                 if abs(circle_y) < expanded_radius:
@@ -281,7 +293,8 @@ class Enemy(MovingEntity):
                         dist_to_closest_IP = ip
                         closest_intersecting_obstacle = o
                         local_pos_of_closest_obstacle = pygame.Vector2(circle_x, circle_y)
-                        pygame.draw.line(screen, "red", self.pos, self.pos + self.direction * lenght, 2)
+                        if draw_debuge_arrive:
+                            pygame.draw.line(screen, "red", self.pos, self.pos + self.direction * lenght, 2)
             
 
         if closest_intersecting_obstacle:
@@ -316,17 +329,20 @@ class Enemy(MovingEntity):
         for obstacle in obstacles:
 
             direction_to_obstacle = (obstacle.pos - player.pos).normalize()
-            pygame.draw.line(screen, "grey", player.pos, obstacle.pos, 1)
+            if draw_debuge_hide:
+                pygame.draw.line(screen, "grey", player.pos, obstacle.pos, 1)
             # Place the hiding spot slightly behind the obstacle from the player's perspective
             hiding_spot = obstacle.pos + direction_to_obstacle * (obstacle.radius + bounding)
             hiding_spot_radius = 5
             if check_collision_hiding_spots(hiding_spot, obstacles, hiding_spot_radius):
                 size = 6
-                pygame.draw.line(screen, "red", (hiding_spot.x - size // 2, hiding_spot.y - size // 2), (hiding_spot.x + size // 2, hiding_spot.y + size // 2), 2)
-                pygame.draw.line(screen, "red", (hiding_spot.x - size // 2, hiding_spot.y + size // 2), (hiding_spot.x + size // 2, hiding_spot.y - size // 2), 2)
+                if draw_debuge_hide:
+                    pygame.draw.line(screen, "red", (hiding_spot.x - size // 2, hiding_spot.y - size // 2), (hiding_spot.x + size // 2, hiding_spot.y + size // 2), 2)
+                    pygame.draw.line(screen, "red", (hiding_spot.x - size // 2, hiding_spot.y + size // 2), (hiding_spot.x + size // 2, hiding_spot.y - size // 2), 2)
                 continue
 
-            pygame.draw.circle(screen, "grey", hiding_spot, hiding_spot_radius, 5)
+            if draw_debuge_hide:
+                pygame.draw.circle(screen, "grey", hiding_spot, hiding_spot_radius, 5)
 
             # Measure distance from the agent to this hiding spot
             distance_to_hiding_spot = (hiding_spot - self.pos).length()
@@ -336,7 +352,8 @@ class Enemy(MovingEntity):
                 dist_to_closest_o = distance_to_hiding_spot
                 best_hiding_spot = hiding_spot
 
-        pygame.draw.circle(screen, "green", best_hiding_spot, 5, 5)
+        if draw_debuge_hide:
+            pygame.draw.circle(screen, "green", best_hiding_spot, 5, 5)
         if dist_to_closest_o == sys.maxsize:
             return self.evade(player)
         return self.arrive(screen, best_hiding_spot)
