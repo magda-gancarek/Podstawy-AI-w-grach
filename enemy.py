@@ -5,6 +5,9 @@ import math
 from settings import *
 import sys
 from utils import check_collision, distance_between_points, check_collision_plus_bounding, check_collision_hiding_spots
+import time
+
+
 
 SEEK = False
 FLEE = False
@@ -19,6 +22,7 @@ HIDE = False
 COHESION = False
 SEPARATION = False
 ALIGNMENT = False
+ATACK = False
 
 weightseek = 1
 weightarrive = 1
@@ -33,9 +37,8 @@ weighthide = 1.0
 weightcohesion = 2.0
 weightseparation = 1.0
 weightalignment = 1.0
+weighattack = 90.0
 
-GROUP_COLORS = [ "red", "green", "blue", "pink", "yellow"]
-group_count = 0
 
 # Function to blend colors from green to red based on a value (0 to 200)
 def blend_color(value, max_value=200):
@@ -75,11 +78,15 @@ class Enemy(MovingEntity):
 
         self.wander_target = pygame.Vector2(0, 0)  # Initialize wander target
         
-        self.color = "white"
+        self.color = (random.randint(1,255), random.randint(1,255), random.randint(1,255))
         self.tag = False
         self.feelers = []
         self._steering_force = pygame.Vector2(0, 0)
         self.target = None
+
+        self.hide_timer = random.uniform(0, 1)
+        self.wander_timer = 0
+        self.hiding = False
 
     def draw_enemy(self, screen): 
         # triangle       
@@ -356,11 +363,31 @@ class Enemy(MovingEntity):
                     self.pos += direction * overlap  # Push the enemy out of the collision
                     # todo: modify the direction here to change the movement angle
     
-    def should_hide(self, screen, player):
-        danger_zone = 50
-        pygame.draw.circle(screen, "red", player.pos, danger_zone, 1)
-        return (self.pos - player.pos).length() < danger_zone
+    # def should_hide(self, screen, player):
+    #     danger_zone = 1000
+    #     pygame.draw.circle(screen, "red", player.pos, danger_zone, 1)
+    #     return (self.pos - player.pos).length() < danger_zone
     
+
+
+    def should_hide(self):
+        current_time = time.time()
+
+        # If hiding, check if hiding time has elapsed
+        if self.hiding:
+            if current_time >= self.hide_timer:
+                self.hiding = False
+                self.wander_timer = current_time + random.uniform(0, 3)  # Wander for 3-6 seconds
+            return True
+        
+        # If wandering, check if wandering time has elapsed
+        else:
+            if current_time >= self.wander_timer:
+                self.hiding = True
+                self.hide_timer = current_time + random.uniform(0, 3)  # Hide for 2-5 seconds
+            return False
+
+
     def evade(self, target):
         to_pursuer = target.pos - self.pos
         look_ahead_time = to_pursuer.length() / (self.max_speed + target.velocity.length())
@@ -369,7 +396,7 @@ class Enemy(MovingEntity):
 
     def group_enemies(self, screen, enemies):
         MAX_GROUP_DISTANCE = 100
-        global group_count
+        count = 0
 
         # Assign nearby agents to the same group
         for e in enemies:
@@ -378,8 +405,17 @@ class Enemy(MovingEntity):
             #e.color = "white"
             if e is not self and distance_between_points(e, self) < MAX_GROUP_DISTANCE:
                 e.tag = True
-                e.color = GROUP_COLORS[group_count % len(GROUP_COLORS)]
-                group_count +=1
+                count += 1
+        
+        for e in enemies:
+            if e.tag == True:
+                e.color = self.color
+                
+        if count >= 5:
+            return True
+        else:
+            return False
+            
 
     def alignment(self, screen, enemies):
         # uses previously tagged vehicles
@@ -444,6 +480,11 @@ class Enemy(MovingEntity):
             _steering_force += self.obstacle_avoidance(screen, obstacles) * weightobstacleavoidance
             if self.exceed_accumulate_force(_steering_force):
                 return self._steering_force
+        if ATACK:
+            _steering_force += self.arrive(screen, player.pos) * weighattack
+            if self.exceed_accumulate_force(_steering_force):
+                return self._steering_force
+
         # if EVADE:
         #     _steering_force += self.evade(screen, player) * weightevade
         #     if self.exceed_accumulate_force(_steering_force):
@@ -530,16 +571,25 @@ class Enemy(MovingEntity):
     '''
 
     def update_sum_force(self, player, enemies, obstacles, walls, screen):
-        global HIDE, WANDER, COHESION, SEPARATION, ALIGNMENT
-        if self.should_hide(screen, player):
-            print("HIDE!")
-            WANDER = False
-            HIDE = True
-        else:
-            WANDER = True
-            HIDE = False
+        global HIDE, WANDER, COHESION, SEPARATION, ALIGNMENT, ARRIVE, ATACK
 
-        self.group_enemies(screen, enemies)
+        atack = self.group_enemies(screen, enemies)
+        if atack == True:
+            print("ATTACK")
+            WANDER = False
+            HIDE = False
+            ATACK = True
+        else:
+
+            if self.should_hide():
+                print("HIDE!")
+                WANDER = False
+                HIDE = True
+            else:
+                print("Not hide!")
+                WANDER = True
+                HIDE = False
+
 
         COHESION = False
         SEPARATION = False
