@@ -12,6 +12,7 @@ class Player(MovingEntity):
         self.radius = PLAYER_SIZE
         self.pos = pos
         self.health = 100
+        self.color = "chartreuse4"
 
     def player_move(self, keys):
         if keys[pygame.K_LEFT] or keys[pygame.K_a]:
@@ -34,7 +35,7 @@ class Player(MovingEntity):
         dy = self.pos.y - mouse_y  # Invert dy because y-coordinates in Pygame increase downwards
         self.angle = math.degrees(math.atan2(dy, dx))
     def draw(self, screen):
-        pygame.draw.circle(screen, "chartreuse4", (int(self.pos.x), int(self.pos.y)), self.radius)
+        pygame.draw.circle(screen, self.color, (int(self.pos.x), int(self.pos.y)), self.radius)
         self.draw_triangle(screen)
         
 

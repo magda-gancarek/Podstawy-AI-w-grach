@@ -6,7 +6,7 @@ from settings import FPS, OBSTACLE_COUNT, SCREEN_HEIGHT, SCREEN_WIDTH, screen
 import sys
 import random
 from wall import Wall
-from utils import check_collision
+from utils import check_collision, distance_between_points
 import math
 
 pygame.init()
@@ -65,6 +65,11 @@ class Bullet(pygame.sprite.Sprite):
         pygame.draw.circle(surface, self.color, (int(self.x), int(self.y)), self.radius)
 
 bullets = []
+damage_timer = 0
+damage_flash_duration = 300  # milliseconds
+font = pygame.font.Font(None, 36)
+game_over_font = pygame.font.Font(None, 72)
+game_over = False
 
 while running:
     for event in pygame.event.get():
@@ -79,68 +84,78 @@ while running:
             mouse_x, mouse_y = pygame.mouse.get_pos()
             bullets.append(Bullet(player.pos.x + player.size // 2, player.pos.y + player.size // 2, mouse_x, mouse_y))
 
-    keys = pygame.key.get_pressed()
-    player.check_player_collision(obstacles)
-    player.player_move(keys)
-    player.player_rotate()
-
     # Clear screen
     screen.fill("black")
 
-    for b in bullets:
-        b.draw(screen)
+    if not game_over:
+        keys = pygame.key.get_pressed()
+        player.check_player_collision(obstacles)
+        player.player_move(keys)
+        player.player_rotate()
 
-    for bullet in bullets[:]:  # Copy the list to avoid modifying it while iterating
-        bullet.move()
-        if bullet.x < 0 or bullet.x > SCREEN_WIDTH or bullet.y < 0 or bullet.y > SCREEN_HEIGHT:
-            bullets.remove(bullet)  # Remove bullet if it goes off-screen
-        else:
-            for enemy in enemies[:]:  # Copy the list to avoid modifying it while iterating
-                # Distance-based collision detection
-                distance = math.sqrt((bullet.x - (enemy.pos.x + enemy.radius // 2)) ** 2 + 
-                                     (bullet.y - (enemy.pos.y + enemy.radius // 2)) ** 2)
-                if distance < bullet.radius + enemy.radius // 2:
-                    enemies.remove(enemy)  # Remove the enemy
-                    bullets.remove(bullet)  # Remove the bullet
-                    break
+        for b in bullets:
+            b.draw(screen)
 
-    # Draw obstacles
-    for o in obstacles:
-        o.draw_obstacle(screen)
+        for bullet in bullets[:]:  # Copy the list to avoid modifying it while iterating
+            bullet.move()
+            if bullet.x < 0 or bullet.x > SCREEN_WIDTH or bullet.y < 0 or bullet.y > SCREEN_HEIGHT:
+                bullets.remove(bullet)  # Remove bullet if it goes off-screen
+            else:
+                for enemy in enemies[:]:  # Copy the list to avoid modifying it while iterating
+                    # Distance-based collision detection
+                    distance = math.sqrt((bullet.x - (enemy.pos.x + enemy.radius // 2)) ** 2 + 
+                                        (bullet.y - (enemy.pos.y + enemy.radius // 2)) ** 2)
+                    if distance < bullet.radius + enemy.radius // 2:
+                        enemies.remove(enemy)  # Remove the enemy
+                        bullets.remove(bullet)  # Remove the bullet
+                        break
 
-    for w in walls:
-        w.draw_wall(screen)      
+        # Draw obstacles
+        for o in obstacles:
+            o.draw_obstacle(screen)
 
-    # Draw enemies
-    for e in enemies:
-        #e.arrive(screen, target_position)
-        #e.seek(screen, target_position)
-        #e.flee(screen, target_position)
-        # e.wander(screen) # bez włączenego wander zmienia rysowanie boxa w obstacle avoidance XD
-        # e.wall_avoidance(screen, walls)
-        # e.obstacle_avoidance(screen, obstacles)
+        for w in walls:
+            w.draw_wall(screen)      
 
-        # # Check if the agent should hide
-        # distance_to_enemy = (e.pos - player.pos).length()
-        # danger_zone = 300
-        # pygame.draw.circle(screen, "red", player.pos, danger_zone, 1)
-        # if distance_to_enemy < danger_zone:
-        #     hiding_spot, distance = e.find_hiding_spot(screen, player, obstacles)
-        #     # Move agent to hiding spot
-        #     if distance == sys.maxsize:
-        #         e.evade_move(screen, hiding_spot)
-        #     else:
-        #         steering = e.arrive(screen, hiding_spot)
-        # e.draw_enemy(screen)
-        # e.update(player, enemies, obstacles, walls, screen)
+        # Draw enemies
+        for e in enemies:
+            e.update_sum_force(player, enemies, obstacles, walls, screen)
+            e.draw_enemy(screen)
 
-        e.update_sum_force(player, enemies, obstacles, walls, screen)
-        e.draw_enemy(screen)
+        # Draw player
+        player.draw(screen)
+        player.draw_light_beam(screen)
 
+        # Check atack from enemies
+        for e in enemies:
+            if distance_between_points(player, e) < 20:
+                if damage_timer == 0:  # Apply damage only if not in cooldown
+                    player.health -= 10  # Decrease HP
+                    damage_timer = pygame.time.get_ticks()  # Start damage timer
 
-    # Draw player
-    player.draw(screen)
-    player.draw_light_beam(screen)
+        # Draw player with damage effect
+        if damage_timer > 0:
+            if pygame.time.get_ticks() - damage_timer < damage_flash_duration:
+                player.color = "red"  # Flash red
+            else:
+                damage_timer = 0  # Reset timer
+                player.color = "chartreuse4"  # Normal color
+
+        # Display HP
+        hp_text = font.render(f"HP: {player.health}", True, "white")
+        screen.blit(hp_text, (40, 30))
+        pygame.draw.rect(screen, "red", (40, 60, 200, 20))  # Background (red)
+        pygame.draw.rect(screen, "green", (40, 60, max(0, player.health * 2), 20))  # Foreground (green)
+
+        # Check game over
+        if player.health <= 0:
+            game_over = True
+            print("Game Over")
+    else:
+        game_over_text = game_over_font.render("GAME OVER", True, "red")
+        game_over_rect = game_over_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50))
+        screen.blit(game_over_text, game_over_rect)
+
 
     # Update the display
     pygame.display.flip()
