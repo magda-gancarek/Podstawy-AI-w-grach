@@ -15,11 +15,11 @@ def check_collision(object, obstacles):
             return True
     return False
 
-def check_collision_plus_bounding(object, obstacles):
+def check_collision_plus_bounding(object, obstacles, bounding):
     for obstacle in obstacles:
         dist = distance_between_points(object, obstacle)
         # If the distance is less than the sum of radii, there's a collision
-        if dist < object.radius + BOUNDING + obstacle.radius:
+        if dist < object.radius + bounding + obstacle.radius:
             return True
     return False
 

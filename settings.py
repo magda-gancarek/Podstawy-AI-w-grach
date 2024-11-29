@@ -19,7 +19,7 @@ ENEMY_COUNT = 20
 ENEMY_RADIUS = 15
 ENEMY_SPEED = 3
 
-OBSTACLE_COUNT = 10
+OBSTACLE_COUNT = 20
 
 # Wander parameters
 WANDER_RADIUS = 40   # Radius of the wander circle
@@ -27,3 +27,8 @@ WANDER_DISTANCE = 100  # Distance the wander circle is projected in front of the
 WANDER_JITTER = 20.0   # Maximum displacement added to the wander target each second
 
 BOUNDING = 150
+
+BOUND_FOR_HIDING_SPOT = 70
+MIN_COLISION_DETECTION_BOX_LEN = 45
+ARRIVE_SLOWING_RADIUS = 100
+OBSTACLE_AVOIDANCE_BOUNDING_RADIUS = 10

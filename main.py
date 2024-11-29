@@ -6,14 +6,13 @@ from settings import FPS, OBSTACLE_COUNT, SCREEN_HEIGHT, SCREEN_WIDTH, screen
 import sys
 import random
 from wall import Wall
-from utils import check_collision
+from utils import check_collision_plus_bounding
 import math
+from settings import *
 
 pygame.init()
 
 # TO DO
-
-# obstacles avoidance: poprawić kolizje, czasem wchodzą na przeszkody. dlaczego?
 # Atak w stronę przeciwnika - Wszytskie się ruszają a nie tylko wybrana grupa 
 
 
@@ -22,11 +21,11 @@ player = Player(pygame.Vector2(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
 
 obstacles = []
 for _ in range(OBSTACLE_COUNT):
-    o = Obstacle(
-        pygame.Vector2(random.randint(50, SCREEN_WIDTH - 50),random.randint(50, SCREEN_HEIGHT - 50)), 
-        random.randint(20, 70) 
-    )
-    if not check_collision(o, obstacles):
+    radius = random.randint(50, 70)
+    margin = BOUND_FOR_HIDING_SPOT + 50 + radius
+    pos = pygame.Vector2(random.randint(margin, SCREEN_WIDTH - margin),random.randint(margin, SCREEN_HEIGHT - margin))
+    o = Obstacle(pos, radius)
+    if not check_collision_plus_bounding(o, obstacles, PLAYER_SIZE + 10):
         obstacles.append(o)
 
 walls = [
@@ -113,28 +112,8 @@ while running:
 
     # Draw enemies
     for e in enemies:
-        #e.arrive(screen, target_position)
-        #e.seek(screen, target_position)
-        #e.flee(screen, target_position)
-        # e.wander(screen) # bez włączenego wander zmienia rysowanie boxa w obstacle avoidance XD
-        # e.wall_avoidance(screen, walls)
-        # e.obstacle_avoidance(screen, obstacles)
-
-        # # Check if the agent should hide
-        # distance_to_enemy = (e.pos - player.pos).length()
-        # danger_zone = 300
-        # pygame.draw.circle(screen, "red", player.pos, danger_zone, 1)
-        # if distance_to_enemy < danger_zone:
-        #     hiding_spot, distance = e.find_hiding_spot(screen, player, obstacles)
-        #     # Move agent to hiding spot
-        #     if distance == sys.maxsize:
-        #         e.evade_move(screen, hiding_spot)
-        #     else:
-        #         steering = e.arrive(screen, hiding_spot)
-        # e.draw_enemy(screen)
-        # e.update(player, enemies, obstacles, walls, screen)
-
         e.update_sum_force(player, enemies, obstacles, walls, screen)
+        e.push_out_of_obstacles(obstacles)
         e.draw_enemy(screen)
 
 
