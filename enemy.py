@@ -8,8 +8,8 @@ from utils import check_collision, distance_between_points, check_collision_plus
 import time
 
 draw_debuge_walls = False
-draw_debuge_obsticles = True
-draw_debuge_arrive = True
+draw_debuge_obsticles = False
+draw_debuge_arrive = False
 draw_debuge_wander = False
 draw_debuge_hide = False
 
@@ -30,13 +30,13 @@ ALIGNMENT = False
 ATTACK = False
 
 # weightseek = 0.1
-# weightflee  = 0.1
 # weightinterpose = 0.1
 # weightpursuit = 0.01
 # weightevade = 0.01
 weightobstacleavoidance = 1000
 weightwallavoidance = 1000
 
+weightflee  = 0.01
 weighthide = 0.1
 weightarrive = 0.0001
 weightwander = 0.0015
@@ -123,7 +123,7 @@ class Enemy(MovingEntity):
 
         return steering_force
 
-    def flee(self, screen, target):
+    def flee(self, target):
         # Desired velocity is the vector pointing from the target to the agent
         desired_velocity = (self.pos - target).normalize() * self.max_speed
 
@@ -532,10 +532,10 @@ class Enemy(MovingEntity):
         #     _steering_force += self.evade(screen, player) * weightevade
         #     if self.exceed_accumulate_force(_steering_force):
         #         return self._steering_force
-        # if FLEE:
-        #     _steering_force += self.flee(screen, self.target) * weightflee
-        #     if self.exceed_accumulate_force(_steering_force):
-        # #         return self._steering_force
+        if FLEE:
+            _steering_force += self.flee(player.pos) * weightflee
+            if self.exceed_accumulate_force(_steering_force):
+                return self._steering_force
         # if SEPARATION:
         #     # uses previously tagged vehicles
         #     _steering_force += self.separation(screen, enemies) * weightseparation
@@ -606,7 +606,7 @@ class Enemy(MovingEntity):
     '''
 
     def update_sum_force(self, player, enemies, obstacles, walls, screen):
-        global HIDE, WANDER, COHESION, SEPARATION, ALIGNMENT, ARRIVE, ATTACK
+        global HIDE, WANDER, COHESION, SEPARATION, ALIGNMENT, ARRIVE, ATTACK, FLEE
 
         self.group_enemies(screen, enemies)
         #for e in enemies:
@@ -622,6 +622,7 @@ class Enemy(MovingEntity):
             HIDE = True
         else:
             WANDER = True
+            FLEE = True
             HIDE = False
 
         # COHESION = True

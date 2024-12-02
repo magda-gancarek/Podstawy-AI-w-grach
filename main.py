@@ -157,6 +157,11 @@ while running:
         if player.health <= 0:
             game_over = True
             print("Game Over")
+
+        if not enemies:
+            win_text = game_over_font.render("YOU WIN!", True, "green")
+            win_rect = win_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50))
+            screen.blit(win_text, win_rect)
     else:
         game_over_text = game_over_font.render("GAME OVER", True, "red")
         game_over_rect = game_over_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50))
