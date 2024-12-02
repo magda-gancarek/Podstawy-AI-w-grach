@@ -46,9 +46,10 @@ running = True
 class Bullet(pygame.sprite.Sprite):
     def __init__(self, x, y, target_x, target_y):
         self.radius = 5  # Radius of the bullet
-        self.color = "white"
+        self.color = "yellow"
         self.x = x
         self.y = y
+        self.pos = pygame.Vector2(x,y)
 
         # Calculate direction vector
         angle = math.atan2(target_y - y, target_x - x)
@@ -58,6 +59,7 @@ class Bullet(pygame.sprite.Sprite):
     def move(self):
         self.x += self.vel_x
         self.y += self.vel_y
+        self.pos = pygame.Vector2(self.x,self.y)
 
     def draw(self, surface):
         # Draw the bullet as a circle
@@ -97,17 +99,21 @@ while running:
 
         for bullet in bullets[:]:  # Copy the list to avoid modifying it while iterating
             bullet.move()
-            if bullet.x < 0 or bullet.x > SCREEN_WIDTH or bullet.y < 0 or bullet.y > SCREEN_HEIGHT:
+
+            if check_collision(bullet, obstacles):
+                bullets.remove(bullet)  # Remove the bullet
+            elif bullet.x < 20 or bullet.x > SCREEN_WIDTH-20 or bullet.y < 20 or bullet.y > SCREEN_HEIGHT-20:
                 bullets.remove(bullet)  # Remove bullet if it goes off-screen
             else:
-                for enemy in enemies[:]:  # Copy the list to avoid modifying it while iterating
+                for e in enemies[:]:  # Copy the list to avoid modifying it while iterating
                     # Distance-based collision detection
-                    distance = math.sqrt((bullet.x - (enemy.pos.x + enemy.radius // 2)) ** 2 + 
-                                        (bullet.y - (enemy.pos.y + enemy.radius // 2)) ** 2)
-                    if distance < bullet.radius + enemy.radius // 2:
-                        enemies.remove(enemy)  # Remove the enemy
+                    distance = math.sqrt((bullet.x - (e.pos.x + e.radius // 2)) ** 2 + 
+                                        (bullet.y - (e.pos.y + e.radius // 2)) ** 2)
+                    if distance < bullet.radius + e.radius // 2:
+                        enemies.remove(e)  # Remove the enemy
                         bullets.remove(bullet)  # Remove the bullet
                         break
+                
 
         # Draw obstacles
         for o in obstacles:
@@ -130,7 +136,7 @@ while running:
         for e in enemies:
             if distance_between_points(player, e) < 20:
                 if damage_timer == 0:  # Apply damage only if not in cooldown
-                    player.health -= 10  # Decrease HP
+                    player.health -= e.damage  # Decrease HP
                     damage_timer = pygame.time.get_ticks()  # Start damage timer
 
         # Draw player with damage effect

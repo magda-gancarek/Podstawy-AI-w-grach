@@ -91,6 +91,7 @@ class Enemy(MovingEntity):
         self._steering_force = pygame.Vector2(0, 0)
         self.target = None
         self.attacking = False
+        self.damage = 1
 
         self.hide_timer = random.uniform(0, 1)
         self.wander_timer = 0
@@ -499,8 +500,6 @@ class Enemy(MovingEntity):
         else:
             return pygame.Vector2(0.0, 0.0)
 
-
-
     # ========================================================================================
 
     def calculate(self, player, enemies, obstacles, walls, screen):
@@ -612,18 +611,16 @@ class Enemy(MovingEntity):
         self.group_enemies(screen, enemies)
         #for e in enemies:
         if self.attacking is True:
-            print("ATTACK")
             self.radius = ENEMY_RADIUS + 3
+            self.damage = 10
             WANDER = False
             HIDE = False
             ATTACK = True
 
         if self.should_hide():
-            print("HIDE!")
             WANDER = False
             HIDE = True
         else:
-            print("Not hide!")
             WANDER = True
             HIDE = False
 
