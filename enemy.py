@@ -109,7 +109,7 @@ class Enemy(MovingEntity):
         right_y = self.pos.y - self.radius * math.sin(math.radians(self.angle + 240))
 
         points = [(front_x, front_y), (left_x, left_y), (right_x, right_y)]
-        pygame.draw.line(screen, "blue", self.pos, self.pos + self.direction * 100, 4) # line indicating movement direction
+        #pygame.draw.line(screen, "blue", self.pos, self.pos + self.direction * 100, 4) # line indicating movement direction
         pygame.draw.circle(screen, self.color, (self.pos.x, self.pos.y), self.radius)
         pygame.draw.polygon(screen, "coral3", points)
 
